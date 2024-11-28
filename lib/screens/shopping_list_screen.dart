@@ -45,6 +45,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
 
     final messages = await api.getChannelMessages(channelId);
 
+    if (!mounted) return;
     setState(() {
       items = messages
           .where((msg) => _hasText(msg))
