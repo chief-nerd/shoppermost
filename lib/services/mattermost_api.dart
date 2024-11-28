@@ -1,10 +1,38 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MattermostApi {
   late String baseUrl;
   late String token;
   String? userId;
+
+  static const String tokenKey = 'mattermost_token';
+  static const String serverKey = 'mattermost_server';
+
+  Future<bool> hasStoredCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedToken = prefs.getString(tokenKey);
+    final storedServer = prefs.getString(serverKey);
+    if (storedToken != null && storedServer != null) {
+      token = storedToken;
+      baseUrl = storedServer;
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> saveCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(tokenKey, token);
+    await prefs.setString(serverKey, baseUrl);
+  }
+
+  Future<void> clearCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(tokenKey);
+    await prefs.remove(serverKey);
+  }
 
   Future<bool> login(String server, String username, String password) async {
     baseUrl = server;
@@ -20,6 +48,7 @@ class MattermostApi {
 
       if (response.statusCode == 200) {
         token = response.headers['token'] ?? '';
+        await saveCredentials();
         return true;
       } else {
         print('Login failed with status code: ${response.statusCode}');

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shoppermost/auth_wrapper.dart';
 import 'cubit/auth/auth_cubit.dart';
 import 'cubit/api/api_cubit.dart';
-import 'screens/login_screen.dart';
 import 'screens/shopping_list_screen.dart';
 
 /// This app connects to a self-hosted Mattermost instance and shows messages
@@ -23,12 +23,11 @@ class App extends StatelessWidget {
       child: MaterialApp(
         title: 'Shoppermost',
         theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+          colorScheme: ColorScheme.fromSeed(seedColor: const Color.fromRGBO(103, 58, 183, 1)),
           useMaterial3: true,
         ),
-        initialRoute: '/',
+        home: const AuthWrapper(),
         routes: {
-          '/': (context) => const LoginScreen(),
           '/shopping_list': (context) => const ShoppingListScreen(),
         },
       ),

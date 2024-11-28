@@ -7,6 +7,19 @@ class AuthCubit extends Cubit<AuthState> {
 
   AuthCubit(this._apiCubit) : super(AuthInitial());
 
+  Future<void> checkStoredCredentials() async {
+    emit(AuthLoading());
+    try {
+      if (await _apiCubit.api.hasStoredCredentials()) {
+        emit(AuthSuccess());
+      } else {
+        emit(AuthInitial());
+      }
+    } catch (e) {
+      emit(AuthFailure(e.toString()));
+    }
+  }
+
   Future<void> login(String server, String username, String password) async {
     emit(AuthLoading());
     try {
