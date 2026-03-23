@@ -145,13 +145,13 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                 return false; // Stay in list
               },
               background: Container(
-                color: Colors.green.withOpacity(0.5),
+                color: Colors.green.withValues(alpha: 0.5),
                 alignment: Alignment.centerLeft,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: const Icon(Icons.shopping_cart, color: Colors.white),
               ),
               secondaryBackground: Container(
-                color: Colors.green.withOpacity(0.5),
+                color: Colors.green.withValues(alpha: 0.5),
                 alignment: Alignment.centerRight,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: const Icon(Icons.shopping_cart, color: Colors.white),
@@ -197,7 +197,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                       );
                     }),
                   );
-                  if (context.mounted) {
+                  if (mounted) {
                     context.read<ShoppingCubit>().loadItems(forceRefresh: true);
                   }
                 },
