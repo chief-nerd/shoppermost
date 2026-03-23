@@ -33,4 +33,9 @@ class AuthCubit extends Cubit<AuthState> {
       emit(AuthFailure(e.toString()));
     }
   }
+
+  Future<void> logout() async {
+    await _apiCubit.api.clearCredentials();
+    emit(AuthInitial());
+  }
 }

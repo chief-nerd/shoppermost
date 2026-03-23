@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shoppermost/auth_wrapper.dart';
 import 'cubit/auth/auth_cubit.dart';
 import 'cubit/api/api_cubit.dart';
+import 'cubit/shopping/shopping_cubit.dart';
 import 'screens/shopping_list_screen.dart';
 
 /// This app connects to a self-hosted Mattermost instance and shows messages
@@ -18,6 +19,9 @@ class App extends StatelessWidget {
         BlocProvider(create: (context) => ApiCubit()),
         BlocProvider(
           create: (context) => AuthCubit(context.read<ApiCubit>()),
+        ),
+        BlocProvider(
+          create: (context) => ShoppingCubit(context.read<ApiCubit>().api),
         ),
       ],
       child: MaterialApp(

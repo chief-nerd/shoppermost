@@ -12,6 +12,6 @@ class ShoppingLoaded extends ShoppingState {
 }
 
 class ShoppingError extends ShoppingState {
-  final String message;
-  ShoppingError(this.message);
+  final String error;
+  ShoppingError(this.error);
 }

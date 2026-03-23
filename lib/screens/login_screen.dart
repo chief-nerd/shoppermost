@@ -4,7 +4,7 @@ import '../cubit/auth/auth_cubit.dart';
 import '../cubit/auth/auth_state.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -12,7 +12,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _serverController = TextEditingController(text: "https://chat.reiter.io");
+  final _serverController =
+      TextEditingController(text: "https://chat.reiter.io");
   final _usernameController = TextEditingController(text: 'jakob@reiter.io');
   final _passwordController = TextEditingController();
 
@@ -32,8 +33,6 @@ class _LoginScreenState extends State<LoginScreen> {
           } else if (state is AuthSuccess) {
             // Dismiss loading indicator
             Navigator.of(context).pop();
-            // Navigate to shopping list screen
-            Navigator.pushReplacementNamed(context, '/shopping_list');
           } else if (state is AuthFailure) {
             // Dismiss loading indicator
             Navigator.of(context).pop();
@@ -55,18 +54,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     labelText: 'Server URL',
                     hintText: 'https://your-mattermost-server.com',
                   ),
-                  validator: (value) => value?.isEmpty ?? true ? 'Please enter server URL' : null,
+                  validator: (value) =>
+                      value?.isEmpty ?? true ? 'Please enter server URL' : null,
                 ),
                 TextFormField(
                   controller: _usernameController,
                   decoration: const InputDecoration(labelText: 'Username'),
-                  validator: (value) => value?.isEmpty ?? true ? 'Please enter username' : null,
+                  validator: (value) =>
+                      value?.isEmpty ?? true ? 'Please enter username' : null,
                 ),
                 TextFormField(
                   controller: _passwordController,
                   decoration: const InputDecoration(labelText: 'Password'),
                   obscureText: true,
-                  validator: (value) => value?.isEmpty ?? true ? 'Please enter password' : null,
+                  validator: (value) =>
+                      value?.isEmpty ?? true ? 'Please enter password' : null,
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(

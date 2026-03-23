@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:shoppermost/cubit/api/api_cubit.dart';
-import '../models/shopping_item.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../cubit/auth/auth_cubit.dart';
+import '../cubit/shopping/shopping_cubit.dart';
+import '../cubit/shopping/shopping_state.dart';
+import 'settings_screen.dart';
 
 class ShoppingListScreen extends StatefulWidget {
-  const ShoppingListScreen({Key? key}) : super(key: key);
+  const ShoppingListScreen({super.key});
 
   @override
   State<ShoppingListScreen> createState() => _ShoppingListScreenState();
 }
 
 class _ShoppingListScreenState extends State<ShoppingListScreen> {
-  List<ShoppingItem> items = [];
-  static const String channelId = 'eqt3j8idztf3bmmdz7xsy3oopc';
   final TextEditingController _textController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<ShoppingCubit>().loadItems();
+  }
 
   @override
   void dispose() {
@@ -21,67 +27,195 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     super.dispose();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    loadShoppingList();
-  }
-
-  bool _hasReactions(Map<String, dynamic> msg) {
-    final reactions = msg['metadata']?['reactions'] as List?;
-    return reactions != null && reactions.isNotEmpty;
-  }
-
-  bool _hasText(Map<String, dynamic> msg) {
-    return msg['message'] != null && msg['message'].isNotEmpty;
-  }
-
-  Future<void> loadShoppingList() async {
-    // Store currently bought items before reload
-    final boughtItemIds = items.where((item) => item.isInCart).map((item) => item.id).toSet();
-
-    final authCubit = context.read<ApiCubit>();
-    final api = authCubit.state;
-
-    final messages = await api.getChannelMessages(channelId);
-
-    if (!mounted) return;
-    setState(() {
-      items = messages
-          .where((msg) => _hasText(msg))
-          .where((msg) => !_hasReactions(msg))
-          .map((msg) => ShoppingItem(
-                id: msg['id'],
-                text: msg['message'],
-                isInCart: boughtItemIds.contains(msg['id']),
-              ))
-          .toList();
-    });
-  }
-
-  Future<void> _completeShoppingList() async {
-    final apiCubit = context.read<ApiCubit>();
-    final api = apiCubit.state;
-
-    final boughtItems = items.where((item) => item.isInCart);
-
-    for (final item in boughtItems) {
-      await api.addReaction(item.id, 'shopping_bags'); // Changed to 'white_check_mark'
-    }
-
-    await loadShoppingList();
-  }
-
-  Future<void> _handleSubmit() async {
+  void _handleSubmit() {
     final text = _textController.text.trim();
     if (text.isNotEmpty) {
-      final apiCubit = context.read<ApiCubit>();
-      final api = apiCubit.state;
-      if (await api.postMessage(channelId, text)) {
-        _textController.clear();
-        await loadShoppingList();
-      }
+      context.read<ShoppingCubit>().addItem(text);
+      _textController.clear();
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('🛍️ Shopping'),
+        actions: [
+          BlocBuilder<ShoppingCubit, ShoppingState>(
+            builder: (context, state) {
+              final hasItemsInCart = state is ShoppingLoaded &&
+                  state.items.any((item) => item.isInCart);
+              return FilledButton.icon(
+                onPressed: hasItemsInCart
+                    ? () => context.read<ShoppingCubit>().checkout()
+                    : null,
+                icon: const Icon(Icons.done_all),
+                label: const Text('Checkout'),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) {
+                  return MultiBlocProvider(
+                    providers: [
+                      BlocProvider.value(value: context.read<ShoppingCubit>()),
+                      BlocProvider.value(value: context.read<AuthCubit>()),
+                    ],
+                    child: const SettingsScreen(),
+                  );
+                }),
+              );
+              if (context.mounted) {
+                context.read<ShoppingCubit>().loadItems(forceRefresh: true);
+              }
+            },
+          ),
+        ],
+      ),
+      body: BlocConsumer<ShoppingCubit, ShoppingState>(
+        listener: (context, state) {
+          if (state is ShoppingError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.error)),
+            );
+          }
+        },
+        builder: (context, state) {
+          return Column(
+            children: [
+              Expanded(
+                child: _buildMainContent(state),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _textController,
+                        decoration: const InputDecoration(
+                          hintText: 'Add new item',
+                          border: OutlineInputBorder(),
+                        ),
+                        onSubmitted: (_) => _handleSubmit(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.send),
+                      onPressed: _handleSubmit,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildMainContent(ShoppingState state) {
+    if (state is ShoppingLoading && state is! ShoppingLoaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (state is ShoppingLoaded) {
+      final items = state.items;
+      if (items.isEmpty) {
+        return _buildEmptyState();
+      }
+
+      return RefreshIndicator(
+        onRefresh: () =>
+            context.read<ShoppingCubit>().loadItems(forceRefresh: true),
+        child: ListView.builder(
+          itemCount: items.length,
+          itemBuilder: (context, index) {
+            final item = items[index];
+            return Dismissible(
+              key: Key(item.id),
+              direction: DismissDirection.horizontal,
+              confirmDismiss: (direction) async {
+                context.read<ShoppingCubit>().toggleItem(item);
+                return false; // Stay in list
+              },
+              background: Container(
+                color: Colors.green.withOpacity(0.5),
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: const Icon(Icons.shopping_cart, color: Colors.white),
+              ),
+              secondaryBackground: Container(
+                color: Colors.green.withOpacity(0.5),
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: const Icon(Icons.shopping_cart, color: Colors.white),
+              ),
+              child: ListTile(
+                title: Text(item.text),
+                trailing: Icon(
+                  item.isInCart
+                      ? Icons.shopping_cart
+                      : Icons.shopping_cart_outlined,
+                  color: item.isInCart
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).disabledColor,
+                ),
+                onTap: () => context.read<ShoppingCubit>().toggleItem(item),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    if (state is ShoppingError) {
+      final needsChannel = state.error.contains('No channel selected');
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(needsChannel ? 'No channel selected' : 'An error occurred'),
+            const SizedBox(height: 16),
+            if (needsChannel)
+              FilledButton.icon(
+                onPressed: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) {
+                      return MultiBlocProvider(
+                        providers: [
+                          BlocProvider.value(
+                              value: context.read<ShoppingCubit>()),
+                          BlocProvider.value(value: context.read<AuthCubit>()),
+                        ],
+                        child: const SettingsScreen(),
+                      );
+                    }),
+                  );
+                  if (context.mounted) {
+                    context.read<ShoppingCubit>().loadItems(forceRefresh: true);
+                  }
+                },
+                icon: const Icon(Icons.settings),
+                label: const Text('Open Settings'),
+              )
+            else
+              ElevatedButton(
+                onPressed: () =>
+                    context.read<ShoppingCubit>().loadItems(forceRefresh: true),
+                child: const Text('Retry'),
+              ),
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 
   Widget _buildEmptyState() {
@@ -99,88 +233,14 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
               ),
               const SizedBox(height: 16),
               FilledButton.icon(
-                onPressed: loadShoppingList,
+                onPressed: () =>
+                    context.read<ShoppingCubit>().loadItems(forceRefresh: true),
                 icon: const Icon(Icons.refresh),
                 label: const Text('Refresh'),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hasItemsInCart = items.any((item) => item.isInCart);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Shopping List'),
-        actions: [
-          FilledButton.icon(
-            onPressed: hasItemsInCart ? _completeShoppingList : null,
-            icon: const Icon(Icons.done_all),
-            label: const Text('Checkout'),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: loadShoppingList,
-              child: items.isEmpty
-                  ? _buildEmptyState()
-                  : ListView.builder(
-                      itemCount: items.length,
-                      itemBuilder: (context, index) {
-                        final item = items[index];
-                        return ListTile(
-                          title: Text((item.text)),
-                          trailing: Icon(
-                            item.isInCart ? Icons.shopping_cart : Icons.shopping_cart_outlined,
-                            color: item.isInCart ? Theme.of(context).colorScheme.primary : Theme.of(context).disabledColor,
-                          ),
-                          onTap: () {
-                            // Toggle item status
-                            setState(() {
-                              items[index] = ShoppingItem(
-                                id: item.id,
-                                text: item.text,
-                                isInCart: !item.isInCart,
-                              );
-                            });
-                          },
-                        );
-                      },
-                    ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _textController,
-                    decoration: const InputDecoration(
-                      hintText: 'Add new item',
-                      border: OutlineInputBorder(),
-                    ),
-                    onSubmitted: (_) => _handleSubmit(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: _handleSubmit,
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
