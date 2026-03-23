@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/auth/auth_cubit.dart';
 import '../cubit/shopping/shopping_cubit.dart';
 import '../cubit/shopping/shopping_state.dart';
+import '../models/shopping_item.dart';
 import 'settings_screen.dart';
 
 class ShoppingListScreen extends StatefulWidget {
@@ -130,46 +131,24 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
         return _buildEmptyState();
       }
 
+      final unchecked = items.where((i) => !i.isInCart).toList();
+      final checked = items.where((i) => i.isInCart).toList();
+
       return RefreshIndicator(
         onRefresh: () =>
             context.read<ShoppingCubit>().loadItems(forceRefresh: true),
-        child: ListView.builder(
-          itemCount: items.length,
-          itemBuilder: (context, index) {
-            final item = items[index];
-            return Dismissible(
-              key: Key(item.id),
-              direction: DismissDirection.horizontal,
-              confirmDismiss: (direction) async {
-                context.read<ShoppingCubit>().toggleItem(item);
-                return false; // Stay in list
-              },
-              background: Container(
-                color: Colors.green.withValues(alpha: 0.5),
-                alignment: Alignment.centerLeft,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: const Icon(Icons.shopping_cart, color: Colors.white),
+        child: ListView(
+          children: [
+            ...unchecked.map((item) => _buildItemTile(item)),
+            if (checked.isNotEmpty)
+              ExpansionTile(
+                key: ValueKey('cart-section-${checked.length}'),
+                initiallyExpanded: false,
+                leading: const Icon(Icons.shopping_cart),
+                title: Text('In cart (${checked.length})'),
+                children: checked.map((item) => _buildItemTile(item)).toList(),
               ),
-              secondaryBackground: Container(
-                color: Colors.green.withValues(alpha: 0.5),
-                alignment: Alignment.centerRight,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: const Icon(Icons.shopping_cart, color: Colors.white),
-              ),
-              child: ListTile(
-                title: Text(item.text),
-                trailing: Icon(
-                  item.isInCart
-                      ? Icons.shopping_cart
-                      : Icons.shopping_cart_outlined,
-                  color: item.isInCart
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).disabledColor,
-                ),
-                onTap: () => context.read<ShoppingCubit>().toggleItem(item),
-              ),
-            );
-          },
+          ],
         ),
       );
     }
@@ -216,6 +195,50 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     }
 
     return const SizedBox.shrink();
+  }
+
+  Widget _buildItemTile(ShoppingItem item) {
+    return Dismissible(
+      key: Key(item.id),
+      direction: DismissDirection.horizontal,
+      confirmDismiss: (direction) async {
+        context.read<ShoppingCubit>().toggleItem(item);
+        return false;
+      },
+      background: Container(
+        color: Colors.green.withValues(alpha: 0.5),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: const Icon(Icons.shopping_cart, color: Colors.white),
+      ),
+      secondaryBackground: Container(
+        color: Colors.green.withValues(alpha: 0.5),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: const Icon(Icons.shopping_cart, color: Colors.white),
+      ),
+      child: ListTile(
+        title: Text(
+          item.text,
+          style: item.isInCart
+              ? TextStyle(
+                  color: Theme.of(context).disabledColor,
+                  decoration: TextDecoration.lineThrough,
+                )
+              : TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.w500,
+                ),
+        ),
+        trailing: Icon(
+          item.isInCart ? Icons.check_circle : Icons.circle_outlined,
+          color: item.isInCart
+              ? Theme.of(context).disabledColor
+              : Theme.of(context).colorScheme.primary,
+        ),
+        onTap: () => context.read<ShoppingCubit>().toggleItem(item),
+      ),
+    );
   }
 
   Widget _buildEmptyState() {
