@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/auth/auth_cubit.dart';
 import '../cubit/shopping/shopping_cubit.dart';
 import '../cubit/shopping/shopping_state.dart';
+import '../cubit/theme/theme_cubit.dart';
 import 'settings_screen.dart';
 
 class ShoppingListScreen extends StatefulWidget {
@@ -35,45 +36,53 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     }
   }
 
+  void _navigateToSettings() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) {
+        return MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: context.read<ShoppingCubit>()),
+            BlocProvider.value(value: context.read<AuthCubit>()),
+            BlocProvider.value(value: context.read<ThemeCubit>()),
+          ],
+          child: const SettingsScreen(),
+        );
+      }),
+    );
+    if (context.mounted) {
+      context.read<ShoppingCubit>().loadItems(forceRefresh: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('🛍️ Shopping'),
+        title: const Text('Shopping'),
         actions: [
           BlocBuilder<ShoppingCubit, ShoppingState>(
             builder: (context, state) {
               final hasItemsInCart = state is ShoppingLoaded &&
                   state.items.any((item) => item.isInCart);
-              return FilledButton.icon(
-                onPressed: hasItemsInCart
-                    ? () => context.read<ShoppingCubit>().checkout()
-                    : null,
-                icon: const Icon(Icons.done_all),
-                label: const Text('Checkout'),
+              return Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: FilledButton.icon(
+                  onPressed: hasItemsInCart
+                      ? () => context.read<ShoppingCubit>().checkout()
+                      : null,
+                  icon: const Icon(Icons.done_all, size: 18),
+                  label: const Text('Checkout'),
+                ),
               );
             },
           ),
-          const SizedBox(width: 8),
           IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) {
-                  return MultiBlocProvider(
-                    providers: [
-                      BlocProvider.value(value: context.read<ShoppingCubit>()),
-                      BlocProvider.value(value: context.read<AuthCubit>()),
-                    ],
-                    child: const SettingsScreen(),
-                  );
-                }),
-              );
-              if (context.mounted) {
-                context.read<ShoppingCubit>().loadItems(forceRefresh: true);
-              }
-            },
+            icon: const Icon(Icons.settings_rounded),
+            onPressed: _navigateToSettings,
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: BlocConsumer<ShoppingCubit, ShoppingState>(
@@ -90,26 +99,40 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
               Expanded(
                 child: _buildMainContent(state),
               ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _textController,
-                        decoration: const InputDecoration(
-                          hintText: 'Add new item',
-                          border: OutlineInputBorder(),
-                        ),
-                        onSubmitted: (_) => _handleSubmit(),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.send),
-                      onPressed: _handleSubmit,
+              // ── Input bar ─────────────────────────────────────────────
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 8, 8, 16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardTheme.color ?? cs.surface,
+                  boxShadow: [
+                    BoxShadow(
+                      color: cs.shadow.withValues(alpha: 0.06),
+                      blurRadius: 12,
+                      offset: const Offset(0, -4),
                     ),
                   ],
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _textController,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: const InputDecoration(
+                            hintText: 'Add an item…',
+                          ),
+                          onSubmitted: (_) => _handleSubmit(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filled(
+                        icon: const Icon(Icons.arrow_upward_rounded),
+                        onPressed: _handleSubmit,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -133,40 +156,84 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
       return RefreshIndicator(
         onRefresh: () =>
             context.read<ShoppingCubit>().loadItems(forceRefresh: true),
-        child: ListView.builder(
+        child: ListView.separated(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           itemCount: items.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 6),
           itemBuilder: (context, index) {
             final item = items[index];
+            final cs = Theme.of(context).colorScheme;
             return Dismissible(
               key: Key(item.id),
               direction: DismissDirection.horizontal,
               confirmDismiss: (direction) async {
                 context.read<ShoppingCubit>().toggleItem(item);
-                return false; // Stay in list
+                return false;
               },
               background: Container(
-                color: Colors.green.withValues(alpha: 0.5),
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 alignment: Alignment.centerLeft,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: const Icon(Icons.shopping_cart, color: Colors.white),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Icon(Icons.shopping_cart_rounded, color: cs.primary),
               ),
               secondaryBackground: Container(
-                color: Colors.green.withValues(alpha: 0.5),
-                alignment: Alignment.centerRight,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: const Icon(Icons.shopping_cart, color: Colors.white),
-              ),
-              child: ListTile(
-                title: Text(item.text),
-                trailing: Icon(
-                  item.isInCart
-                      ? Icons.shopping_cart
-                      : Icons.shopping_cart_outlined,
-                  color: item.isInCart
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).disabledColor,
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                onTap: () => context.read<ShoppingCubit>().toggleItem(item),
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Icon(Icons.shopping_cart_rounded, color: cs.primary),
+              ),
+              child: Card(
+                margin: EdgeInsets.zero,
+                child: ListTile(
+                  leading: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: item.isInCart
+                          ? cs.primary.withValues(alpha: 0.15)
+                          : cs.onSurface.withValues(alpha: 0.06),
+                    ),
+                    child: Icon(
+                      item.isInCart
+                          ? Icons.check_rounded
+                          : Icons.circle_outlined,
+                      size: 18,
+                      color: item.isInCart
+                          ? cs.primary
+                          : cs.onSurface.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  title: Text(
+                    item.text,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      decoration:
+                          item.isInCart ? TextDecoration.lineThrough : null,
+                      color: item.isInCart
+                          ? cs.onSurface.withValues(alpha: 0.45)
+                          : cs.onSurface,
+                    ),
+                  ),
+                  trailing: Icon(
+                    item.isInCart
+                        ? Icons.shopping_cart_rounded
+                        : Icons.shopping_cart_outlined,
+                    color: item.isInCart
+                        ? cs.primary
+                        : cs.onSurface.withValues(alpha: 0.25),
+                    size: 20,
+                  ),
+                  onTap: () => context.read<ShoppingCubit>().toggleItem(item),
+                ),
               ),
             );
           },
@@ -176,41 +243,81 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
 
     if (state is ShoppingError) {
       final needsChannel = state.error.contains('No channel selected');
+      final cs = Theme.of(context).colorScheme;
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(needsChannel ? 'No channel selected' : 'An error occurred'),
-            const SizedBox(height: 16),
-            if (needsChannel)
-              FilledButton.icon(
-                onPressed: () async {
-                  await Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) {
-                      return MultiBlocProvider(
-                        providers: [
-                          BlocProvider.value(
-                              value: context.read<ShoppingCubit>()),
-                          BlocProvider.value(value: context.read<AuthCubit>()),
-                        ],
-                        child: const SettingsScreen(),
-                      );
-                    }),
-                  );
-                  if (mounted) {
-                    context.read<ShoppingCubit>().loadItems(forceRefresh: true);
-                  }
-                },
-                icon: const Icon(Icons.settings),
-                label: const Text('Open Settings'),
-              )
-            else
-              ElevatedButton(
-                onPressed: () =>
-                    context.read<ShoppingCubit>().loadItems(forceRefresh: true),
-                child: const Text('Retry'),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: cs.error.withValues(alpha: 0.1),
+                ),
+                child: Icon(
+                  needsChannel
+                      ? Icons.link_off_rounded
+                      : Icons.error_outline_rounded,
+                  size: 36,
+                  color: cs.error,
+                ),
               ),
-          ],
+              const SizedBox(height: 20),
+              Text(
+                needsChannel ? 'No channel selected' : 'Something went wrong',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                needsChannel
+                    ? 'Pick a Mattermost channel in settings to get started.'
+                    : 'Please try again or check your connection.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurface.withValues(alpha: 0.6),
+                    ),
+              ),
+              const SizedBox(height: 28),
+              if (needsChannel)
+                FilledButton.icon(
+                  onPressed: () async {
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) {
+                        return MultiBlocProvider(
+                          providers: [
+                            BlocProvider.value(
+                                value: context.read<ShoppingCubit>()),
+                            BlocProvider.value(
+                                value: context.read<AuthCubit>()),
+                            BlocProvider.value(
+                                value: context.read<ThemeCubit>()),
+                          ],
+                          child: const SettingsScreen(),
+                        );
+                      }),
+                    );
+                    if (mounted) {
+                      context
+                          .read<ShoppingCubit>()
+                          .loadItems(forceRefresh: true);
+                    }
+                  },
+                  icon: const Icon(Icons.settings_rounded),
+                  label: const Text('Open Settings'),
+                )
+              else
+                FilledButton.icon(
+                  onPressed: () => context
+                      .read<ShoppingCubit>()
+                      .loadItems(forceRefresh: true),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Retry'),
+                ),
+            ],
+          ),
         ),
       );
     }
@@ -219,27 +326,46 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   }
 
   Widget _buildEmptyState() {
+    final cs = Theme.of(context).colorScheme;
     return Center(
-      child: Card(
-        margin: const EdgeInsets.all(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'No items in shopping list',
-                style: TextStyle(fontSize: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: cs.primary.withValues(alpha: 0.1),
               ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: () =>
-                    context.read<ShoppingCubit>().loadItems(forceRefresh: true),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Refresh'),
+              child: Icon(
+                Icons.shopping_bag_outlined,
+                size: 40,
+                color: cs.primary,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Your list is empty',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Add items below or pull down to refresh.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: cs.onSurface.withValues(alpha: 0.6),
+                  ),
+            ),
+            const SizedBox(height: 28),
+            FilledButton.icon(
+              onPressed: () =>
+                  context.read<ShoppingCubit>().loadItems(forceRefresh: true),
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Refresh'),
+            ),
+          ],
         ),
       ),
     );

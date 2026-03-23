@@ -19,63 +19,113 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Login to Mattermost')),
       body: BlocListener<AuthCubit, AuthState>(
         listener: (context, state) {
           if (state is AuthLoading) {
-            // Show loading indicator
             showDialog(
               context: context,
               barrierDismissible: false,
               builder: (_) => const Center(child: CircularProgressIndicator()),
             );
           } else if (state is AuthSuccess) {
-            // Dismiss loading indicator
             Navigator.of(context).pop();
           } else if (state is AuthFailure) {
-            // Dismiss loading indicator
             Navigator.of(context).pop();
-            // Show error message
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.error)),
             );
           }
         },
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                TextFormField(
-                  controller: _serverController,
-                  decoration: const InputDecoration(
-                    labelText: 'Server URL',
-                    hintText: 'https://your-mattermost-server.com',
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // ── Hero icon ─────────────────────────────────────
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: cs.primary.withValues(alpha: 0.12),
+                        ),
+                        child: Icon(
+                          Icons.shopping_bag_rounded,
+                          size: 40,
+                          color: cs.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text('Shoppermost', style: tt.headlineMedium),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Sign in with your Mattermost account',
+                        style: tt.bodyMedium?.copyWith(
+                          color: cs.onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      const SizedBox(height: 36),
+
+                      // ── Form fields ───────────────────────────────────
+                      TextFormField(
+                        controller: _serverController,
+                        decoration: const InputDecoration(
+                          labelText: 'Server URL',
+                          hintText: 'https://your-mattermost-server.com',
+                          prefixIcon: Icon(Icons.dns_outlined),
+                        ),
+                        keyboardType: TextInputType.url,
+                        validator: (value) => value?.isEmpty ?? true
+                            ? 'Please enter server URL'
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _usernameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Username',
+                          prefixIcon: Icon(Icons.person_outline_rounded),
+                        ),
+                        validator: (value) => value?.isEmpty ?? true
+                            ? 'Please enter username'
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _passwordController,
+                        decoration: const InputDecoration(
+                          labelText: 'Password',
+                          prefixIcon: Icon(Icons.lock_outline_rounded),
+                        ),
+                        obscureText: true,
+                        validator: (value) => value?.isEmpty ?? true
+                            ? 'Please enter password'
+                            : null,
+                      ),
+                      const SizedBox(height: 28),
+
+                      // ── Login button ──────────────────────────────────
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: _handleLogin,
+                          child: const Text('Sign In'),
+                        ),
+                      ),
+                    ],
                   ),
-                  validator: (value) =>
-                      value?.isEmpty ?? true ? 'Please enter server URL' : null,
                 ),
-                TextFormField(
-                  controller: _usernameController,
-                  decoration: const InputDecoration(labelText: 'Username'),
-                  validator: (value) =>
-                      value?.isEmpty ?? true ? 'Please enter username' : null,
-                ),
-                TextFormField(
-                  controller: _passwordController,
-                  decoration: const InputDecoration(labelText: 'Password'),
-                  obscureText: true,
-                  validator: (value) =>
-                      value?.isEmpty ?? true ? 'Please enter password' : null,
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _handleLogin,
-                  child: const Text('Login'),
-                ),
-              ],
+              ),
             ),
           ),
         ),

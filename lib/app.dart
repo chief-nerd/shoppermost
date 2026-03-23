@@ -4,7 +4,9 @@ import 'package:shoppermost/auth_wrapper.dart';
 import 'cubit/auth/auth_cubit.dart';
 import 'cubit/api/api_cubit.dart';
 import 'cubit/shopping/shopping_cubit.dart';
+import 'cubit/theme/theme_cubit.dart';
 import 'screens/shopping_list_screen.dart';
+import 'theme/app_theme.dart';
 
 /// This app connects to a self-hosted Mattermost instance and shows messages
 /// from a specific channel as a shopping list. Messages without reactions are
@@ -23,16 +25,20 @@ class App extends StatelessWidget {
         BlocProvider(
           create: (context) => ShoppingCubit(context.read<ApiCubit>().api),
         ),
+        BlocProvider(create: (context) => ThemeCubit()),
       ],
-      child: MaterialApp(
-        title: 'Shoppermost',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color.fromRGBO(103, 58, 183, 1)),
-          useMaterial3: true,
-        ),
-        home: const AuthWrapper(),
-        routes: {
-          '/shopping_list': (context) => const ShoppingListScreen(),
+      child: BlocBuilder<ThemeCubit, ThemeMode>(
+        builder: (context, themeMode) {
+          return MaterialApp(
+            title: 'Shoppermost',
+            theme: AppTheme.light,
+            darkTheme: AppTheme.dark,
+            themeMode: themeMode,
+            home: const AuthWrapper(),
+            routes: {
+              '/shopping_list': (context) => const ShoppingListScreen(),
+            },
+          );
         },
       ),
     );
