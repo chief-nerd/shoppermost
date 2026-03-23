@@ -94,6 +94,71 @@ lib/
 | Persistence | [shared_preferences](https://pub.dev/packages/shared_preferences), [sqflite](https://pub.dev/packages/sqflite) |
 | Testing | [bloc_test](https://pub.dev/packages/bloc_test), [mocktail](https://pub.dev/packages/mocktail) |
 
+## Building for Sideloading
+
+Shoppermost ships with a build pipeline for distributing outside the app stores. You can build locally with the included script or via GitHub Actions CI.
+
+### Local builds
+
+```bash
+# Android APK
+./build.sh android
+
+# iOS — signed ad-hoc IPA (requires Apple Developer certificate + provisioning profile)
+./build.sh ios
+
+# iOS — unsigned (for re-signing later with AltStore, Sideloadly, etc.)
+./build.sh ios --no-sign
+
+# Both platforms at once
+./build.sh all
+
+# Pass extra Flutter flags
+./build.sh android --build-name=1.2.0 --build-number=42
+```
+
+Outputs:
+| Platform | Path |
+|---|---|
+| Android | `build/app/outputs/flutter-apk/app-release.apk` |
+| iOS (signed) | `build/ios/ipa/*.ipa` |
+| iOS (unsigned) | `build/ios/shoppermost-unsigned.ipa` |
+
+### CI — GitHub Actions
+
+Push a tag to trigger the pipeline automatically:
+
+```bash
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+Or trigger manually from the **Actions** tab using _workflow_dispatch_.
+
+Download the APK / IPA from the workflow's **Artifacts** section.
+
+#### Required secrets (for signed builds)
+
+| Secret | Description |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | Base64-encoded `.jks` keystore |
+| `ANDROID_KEY_ALIAS` | Key alias inside the keystore |
+| `ANDROID_KEY_PASSWORD` | Key password |
+| `ANDROID_STORE_PASSWORD` | Keystore password |
+| `IOS_CERTIFICATE_P12_BASE64` | Base64-encoded `.p12` Apple signing certificate |
+| `IOS_CERTIFICATE_PASSWORD` | Password for the `.p12` |
+| `IOS_PROVISIONING_PROFILE_BASE64` | Base64-encoded ad-hoc `.mobileprovision` |
+
+> **Note:** Signing secrets are optional. Without them the Android APK is debug-signed and the iOS build produces an unsigned IPA.
+
+### Installing on devices
+
+**Android:** Transfer the `.apk` to the device and open it (enable _Install from unknown sources_ in settings).
+
+**iOS (signed ad-hoc):** AirDrop the `.ipa` or use Apple Configurator. The device UDID must be in the provisioning profile.
+
+**iOS (unsigned):** Use [AltStore](https://altstore.io/), [Sideloadly](https://sideloadly.io/), or a similar tool to install the `.ipa` with your Apple ID.
+
 ## Contributing
 
 Contributions are welcome! Please open an issue first to discuss what you'd like to change.
