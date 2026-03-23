@@ -69,7 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         DropdownButtonFormField<String>(
-                          value: _selectedChannelId,
+                          initialValue: _selectedChannelId,
                           decoration: const InputDecoration(
                             hintText: 'Select a channel',
                           ),
