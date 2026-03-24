@@ -87,11 +87,7 @@ void main() {
       'display_name': 'Grocery Shopping',
       'name': 'grocery-shopping'
     },
-    {
-      'id': 'ch2',
-      'display_name': 'Weekly Meals',
-      'name': 'weekly-meals'
-    },
+    {'id': 'ch2', 'display_name': 'Weekly Meals', 'name': 'weekly-meals'},
   ];
 
   late MockAuthCubit mockAuth;
@@ -148,11 +144,10 @@ void main() {
         configureScreen(tester);
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
-        setupMocks(
-            themeMode: isDark ? ThemeMode.dark : ThemeMode.light);
+        setupMocks(themeMode: isDark ? ThemeMode.dark : ThemeMode.light);
 
-        await tester.pumpWidget(
-            wrapScreen(const LoginScreen(), isDark: isDark));
+        await tester
+            .pumpWidget(wrapScreen(const LoginScreen(), isDark: isDark));
         await tester.pumpAndSettle();
 
         await expectLater(
@@ -165,11 +160,10 @@ void main() {
         configureScreen(tester);
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
-        setupMocks(
-            themeMode: isDark ? ThemeMode.dark : ThemeMode.light);
+        setupMocks(themeMode: isDark ? ThemeMode.dark : ThemeMode.light);
 
-        await tester.pumpWidget(
-            wrapScreen(const ShoppingListScreen(), isDark: isDark));
+        await tester
+            .pumpWidget(wrapScreen(const ShoppingListScreen(), isDark: isDark));
         await tester.pumpAndSettle();
 
         await expectLater(
@@ -182,11 +176,10 @@ void main() {
         configureScreen(tester);
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
-        setupMocks(
-            themeMode: isDark ? ThemeMode.dark : ThemeMode.light);
+        setupMocks(themeMode: isDark ? ThemeMode.dark : ThemeMode.light);
 
-        await tester.pumpWidget(
-            wrapScreen(const SettingsScreen(), isDark: isDark));
+        await tester
+            .pumpWidget(wrapScreen(const SettingsScreen(), isDark: isDark));
         await tester.pump(); // let _loadChannels() future resolve
         await tester.pumpAndSettle();
 
