@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bloc_test/bloc_test.dart';
@@ -21,10 +23,51 @@ class MockShoppingCubit extends MockCubit<ShoppingState>
 
 class MockThemeCubit extends MockCubit<ThemeMode> implements ThemeCubit {}
 
+/// Locate the Flutter SDK's material_fonts directory and load Roboto +
+/// MaterialIcons so golden screenshots render real text and icons.
+Future<void> loadAppFonts() async {
+  // Resolve to the Flutter SDK root from the dart executable path.
+  // Dart binary lives at <flutter-sdk>/bin/cache/dart-sdk/bin/dart
+  final dartExe = File(Platform.resolvedExecutable).resolveSymbolicLinksSync();
+  final sdkRoot = Directory(dartExe).parent.parent.parent.parent.parent.parent;
+  final fontsDir =
+      Directory('${sdkRoot.path}/bin/cache/artifacts/material_fonts');
+
+  // Roboto (sans-serif fallback used by MaterialApp)
+  final robotoVariants = {
+    'Roboto-Regular.ttf': FontWeight.w400,
+    'Roboto-Medium.ttf': FontWeight.w500,
+    'Roboto-Bold.ttf': FontWeight.w700,
+    'Roboto-Light.ttf': FontWeight.w300,
+    'Roboto-Thin.ttf': FontWeight.w100,
+    'Roboto-Black.ttf': FontWeight.w900,
+  };
+
+  final robotoLoader = FontLoader('Roboto');
+  for (final entry in robotoVariants.entries) {
+    final file = File('${fontsDir.path}/${entry.key}');
+    if (file.existsSync()) {
+      final bytes = file.readAsBytesSync();
+      robotoLoader.addFont(Future.value(ByteData.sublistView(bytes)));
+    }
+  }
+  await robotoLoader.load();
+
+  // MaterialIcons
+  final iconsFile = File('${fontsDir.path}/MaterialIcons-Regular.otf');
+  if (iconsFile.existsSync()) {
+    final iconLoader = FontLoader('MaterialIcons');
+    final bytes = iconsFile.readAsBytesSync();
+    iconLoader.addFont(Future.value(ByteData.sublistView(bytes)));
+    await iconLoader.load();
+  }
+}
+
 void main() {
-  setUpAll(() {
+  setUpAll(() async {
     registerFallbackValue(ThemeMode.system);
     registerFallbackValue('');
+    await loadAppFonts();
   });
 
   final sampleItems = [
