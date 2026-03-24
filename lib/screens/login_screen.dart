@@ -12,9 +12,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _serverController =
-      TextEditingController(text: "https://chat.reiter.io");
-  final _usernameController = TextEditingController(text: 'jakob@reiter.io');
+  final _serverController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
   @override

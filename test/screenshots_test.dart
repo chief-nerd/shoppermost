@@ -43,15 +43,18 @@ Future<void> loadAppFonts() async {
     'Roboto-Black.ttf': FontWeight.w900,
   };
 
-  final robotoLoader = FontLoader('Roboto');
-  for (final entry in robotoVariants.entries) {
-    final file = File('${fontsDir.path}/${entry.key}');
-    if (file.existsSync()) {
-      final bytes = file.readAsBytesSync();
-      robotoLoader.addFont(Future.value(ByteData.sublistView(bytes)));
+  // Register under multiple family names so all text styles resolve.
+  for (final family in ['Roboto', 'sans-serif']) {
+    final loader = FontLoader(family);
+    for (final entry in robotoVariants.entries) {
+      final file = File('${fontsDir.path}/${entry.key}');
+      if (file.existsSync()) {
+        final bytes = file.readAsBytesSync();
+        loader.addFont(Future.value(ByteData.sublistView(bytes)));
+      }
     }
+    await loader.load();
   }
-  await robotoLoader.load();
 
   // MaterialIcons
   final iconsFile = File('${fontsDir.path}/MaterialIcons-Regular.otf');
@@ -61,6 +64,55 @@ Future<void> loadAppFonts() async {
     iconLoader.addFont(Future.value(ByteData.sublistView(bytes)));
     await iconLoader.load();
   }
+}
+
+/// Patch [font] into every text-bearing style in [theme] so that
+/// golden screenshots never fall back to the Ahem placeholder.
+ThemeData _applyFont(ThemeData theme, String font) {
+  ButtonStyle? _patchButtonStyle(ButtonStyle? s) {
+    if (s == null) return null;
+    final base = s.textStyle?.resolve({}) ?? const TextStyle();
+    return s.copyWith(
+      textStyle: WidgetStatePropertyAll(base.copyWith(fontFamily: font)),
+    );
+  }
+
+  return theme.copyWith(
+    textTheme: theme.textTheme.apply(fontFamily: font),
+    primaryTextTheme: theme.primaryTextTheme.apply(fontFamily: font),
+    appBarTheme: theme.appBarTheme.copyWith(
+      titleTextStyle:
+          theme.appBarTheme.titleTextStyle?.copyWith(fontFamily: font),
+      toolbarTextStyle:
+          theme.appBarTheme.toolbarTextStyle?.copyWith(fontFamily: font),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: _patchButtonStyle(theme.filledButtonTheme.style),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: _patchButtonStyle(theme.elevatedButtonTheme.style),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: _patchButtonStyle(theme.outlinedButtonTheme.style),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: _patchButtonStyle(theme.textButtonTheme.style),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: _patchButtonStyle(theme.segmentedButtonTheme.style),
+    ),
+    inputDecorationTheme: theme.inputDecorationTheme.copyWith(
+      hintStyle:
+          theme.inputDecorationTheme.hintStyle?.copyWith(fontFamily: font),
+      labelStyle:
+          theme.inputDecorationTheme.labelStyle?.copyWith(fontFamily: font),
+      floatingLabelStyle: theme.inputDecorationTheme.floatingLabelStyle
+          ?.copyWith(fontFamily: font),
+    ),
+    dropdownMenuTheme: DropdownMenuThemeData(
+      textStyle: theme.dropdownMenuTheme.textStyle?.copyWith(fontFamily: font),
+    ),
+  );
 }
 
 void main() {
@@ -120,10 +172,14 @@ void main() {
   }
 
   Widget wrapScreen(Widget screen, {required bool isDark}) {
+    // Apply 'Roboto' to every text style in the theme so the test renderer
+    // never falls back to the Ahem placeholder font.
+    final base = isDark ? AppTheme.dark : AppTheme.light;
+    final theme = _applyFont(base, 'Roboto');
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
+      theme: theme,
+      darkTheme: theme,
       themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
       home: MultiBlocProvider(
         providers: [
